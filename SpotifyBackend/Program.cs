@@ -13,7 +13,8 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromHours(24);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.SameSite = SameSiteMode.Lax; // Important for cross-origin
+    options.Cookie.SameSite = SameSiteMode.None; // Required for cross-site (Vercel -> Backend)
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Required for SameSite=None
 });
 
 // Add CORS

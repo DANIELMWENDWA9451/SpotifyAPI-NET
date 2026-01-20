@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+.vs/
+*.user
+[Dd]ebug/
+[Rr]elease/
+*.pdb
+
+# config
+appsettings.Production.json
+appsettings.Development.json
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+dist/
+.vercel

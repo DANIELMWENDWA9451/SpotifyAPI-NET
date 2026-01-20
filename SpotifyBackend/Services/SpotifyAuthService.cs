@@ -6,23 +6,24 @@ using System.Threading;
 
 public class SpotifyAuthService
 {
-    private readonly string _clientId;
-    private readonly Uri _redirectUri;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public SpotifyAuthService(IConfiguration configuration)
+    public SpotifyAuthService(IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
     {
         _clientId = configuration["Spotify:ClientId"] 
             ?? throw new InvalidOperationException("Spotify ClientId not configured");
-        _redirectUri = new Uri(configuration["Spotify:RedirectUri"] 
-            ?? "http://127.0.0.1:5000/api/auth/callback");
+        var redirectUriString = configuration["Spotify:RedirectUri"] 
+            ?? throw new InvalidOperationException("Spotify RedirectUri not configured");
+        _redirectUri = new Uri(redirectUriString);
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<Uri> GetAuthorizationUri()
     {
         var (verifier, challenge) = PKCEUtil.GenerateCodes();
         
-        // In a real API, this should be stored in a distributed cache or database linked to a session ID
-        PKCEVerifier = verifier;
+        // Store verifier in session
+        _httpContextAccessor.HttpContext?.Session.SetString("PKCEVerifier", verifier);
 
         var loginRequest = new LoginRequest(_redirectUri, _clientId, LoginRequest.ResponseType.Code)
         {
@@ -54,7 +55,13 @@ public class SpotifyAuthService
 
     public async Task<PKCETokenResponse> ExchangeCodeForToken(string code)
     {
-        var tokenRequest = new PKCETokenRequest(_clientId, code, _redirectUri, PKCEVerifier!);
+        var verifier = _httpContextAccessor.HttpContext?.Session.GetString("PKCEVerifier");
+        if (string.IsNullOrEmpty(verifier))
+        {
+            throw new InvalidOperationException("PKCE Verifier not found in session. Please try logging in again.");
+        }
+
+        var tokenRequest = new PKCETokenRequest(_clientId, code, _redirectUri, verifier);
         var oauthClient = new OAuthClient();
         return await oauthClient.RequestToken(tokenRequest);
     }
@@ -78,7 +85,4 @@ public class SpotifyAuthService
         var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(authenticator);
         return new SpotifyClient(config);
     }
-
-    // Temporary storage for PKCE verifier
-    public static string? PKCEVerifier { get; set; }
 }
