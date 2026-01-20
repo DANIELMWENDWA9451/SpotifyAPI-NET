@@ -10,7 +10,7 @@ export default function Login() {
 
   const handleSpotifyLogin = async () => {
     if (!backendConfigured) return;
-    
+
     setIsLoading(true);
     // Redirect to backend OAuth endpoint
     window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/auth/login`;
@@ -22,7 +22,7 @@ export default function Login() {
       <header className="p-8">
         <div className="flex items-center gap-2">
           <Music className="h-10 w-10 text-primary" />
-          <span className="text-2xl font-bold">Spotify</span>
+          <span className="text-2xl font-bold">DanSpotify</span>
         </div>
       </header>
 

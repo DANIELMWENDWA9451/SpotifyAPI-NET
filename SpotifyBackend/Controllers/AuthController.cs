@@ -9,11 +9,13 @@ public class AuthController : ControllerBase
 {
     private readonly SpotifyAuthService _authService;
     private readonly SpotifyService _spotifyService;
+    private readonly IConfiguration _configuration;
 
-    public AuthController(SpotifyAuthService authService, SpotifyService spotifyService)
+    public AuthController(SpotifyAuthService authService, SpotifyService spotifyService, IConfiguration configuration)
     {
         _authService = authService;
         _spotifyService = spotifyService;
+        _configuration = configuration;
     }
 
     [HttpGet("login")]
@@ -34,7 +36,8 @@ public class AuthController : ControllerBase
             var token = await _authService.ExchangeCodeForToken(code);
             _spotifyService.StoreToken(token);
             // Redirect back to React App
-            return Redirect("http://127.0.0.1:8080"); 
+            var frontendUrl = _configuration["FrontendUrl"] ?? "http://127.0.0.1:8080";
+            return Redirect(frontendUrl); 
         }
         catch (Exception ex)
         {
