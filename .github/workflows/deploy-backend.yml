@@ -60,6 +60,11 @@ jobs:
           local-dir: ./publish/
           server-dir: /danspotify/
           dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/appsettings.Production.json
+            **/appsettings.json
 
       - name: Bring App Online
         env:
