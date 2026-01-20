@@ -7,6 +7,8 @@ using System.Threading;
 public class SpotifyAuthService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly string _clientId;
+    private readonly Uri _redirectUri;
 
     public SpotifyAuthService(IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
     {
