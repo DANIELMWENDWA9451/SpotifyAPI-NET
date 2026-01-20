@@ -1,0 +1,14 @@
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\bin\Debug\net5.0\SpotifyAPI.Web.deps.json
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\bin\Debug\net5.0\SpotifyAPI.Web.dll
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\bin\Debug\net5.0\SpotifyAPI.Web.pdb
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\bin\Debug\net5.0\SpotifyAPI.Web.xml
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\SpotifyAPI.Web.csproj.AssemblyReference.cache
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\SpotifyAPI.Web.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\SpotifyAPI.Web.AssemblyInfoInputs.cache
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\SpotifyAPI.Web.AssemblyInfo.cs
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\SpotifyAPI.Web.csproj.CoreCompileInputs.cache
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\SpotifyAPI.Web.dll
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\refint\SpotifyAPI.Web.dll
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\SpotifyAPI.Web.xml
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\SpotifyAPI.Web.pdb
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net5.0\ref\SpotifyAPI.Web.dll

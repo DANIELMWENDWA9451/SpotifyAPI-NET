@@ -1,0 +1,42 @@
+name: Deploy Backend to SmarterASP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'SpotifyBackend/**'
+      - 'SpotifyAPI.Web/**'
+      - 'SpotifyAPI.Web.Auth/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore SpotifyBackend/SpotifyBackend.csproj
+
+      - name: Build
+        run: dotnet build SpotifyBackend/SpotifyBackend.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish SpotifyBackend/SpotifyBackend.csproj --configuration Release --output ./publish --no-build
+
+      - name: Deploy to SmarterASP via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./publish/
+          server-dir: /
+          dangerous-clean-slate: false
