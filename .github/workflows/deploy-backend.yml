@@ -8,6 +8,7 @@ on:
       - 'SpotifyAPI.Web/**'
       - 'SpotifyAPI.Web.Auth/**'
       - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
