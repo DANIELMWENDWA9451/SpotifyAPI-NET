@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://coxward234-001-site1.ktempurl.com/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -16,16 +16,17 @@ import type {
 } from '@/types/spotify';
 
 // Configuration - Set your deployed backend URL in environment variables
+// Configuration - Set your deployed backend URL in environment variables
+// If VITE_API_BASE_URL is not set, we default to empty string (relative path)
+// to leverage Vercel rewrites/proxying
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
-// Check if backend is configured
-export const isBackendConfigured = (): boolean => Boolean(API_BASE_URL);
+// Check if backend is configured (always true now as we support relative paths)
+export const isBackendConfigured = (): boolean => true;
 
 // API wrapper with error handling
 async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  if (!API_BASE_URL) {
-    throw new Error('Backend not configured. Set VITE_API_BASE_URL environment variable.');
-  }
+  // Relative path logic relies on API_BASE_URL being empty string
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
