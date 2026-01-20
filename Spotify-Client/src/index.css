@@ -1,9 +1,9 @@
+/* Spotify Deep Space Theme - Dark Mode Only */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Spotify Deep Space Theme - Dark Mode Only */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
 
 @layer base {
   :root {
@@ -17,7 +17,7 @@
     --spotify-gray-light: 0 0% 24%;
     --spotify-gray-lighter: 0 0% 70%;
     --spotify-white: 0 0% 100%;
-    
+
     /* Semantic Tokens */
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
@@ -65,7 +65,7 @@
     --player-foreground: 0 0% 100%;
     --player-progress: 0 0% 40%;
     --player-progress-active: 141 73% 42%;
-    
+
     /* Surface levels */
     --surface-0: 0 0% 0%;
     --surface-1: 0 0% 7%;
@@ -136,6 +136,7 @@
 }
 
 @layer components {
+
   /* Spotify Button Styles */
   .spotify-btn {
     @apply inline-flex items-center justify-center rounded-full font-semibold transition-all duration-200;
@@ -144,7 +145,7 @@
 
   .spotify-btn-primary {
     @apply spotify-btn bg-primary text-primary-foreground px-8 py-3;
-    @apply hover:bg-[hsl(141,73%,52%)];
+    @apply hover:bg-[hsl(141, 73%, 52%)];
   }
 
   .spotify-btn-secondary {
@@ -162,7 +163,7 @@
   .play-button-overlay {
     @apply absolute bottom-2 right-2 w-12 h-12 rounded-full bg-primary flex items-center justify-center;
     @apply opacity-0 translate-y-2 transition-all duration-300 shadow-xl;
-    @apply hover:scale-105 hover:bg-[hsl(141,73%,52%)];
+    @apply hover:scale-105 hover:bg-[hsl(141, 73%, 52%)];
   }
 
   .spotify-card:hover .play-button-overlay {
@@ -198,6 +199,7 @@
     0% {
       transform: translateX(0%);
     }
+
     100% {
       transform: translateX(-50%);
     }
@@ -270,6 +272,7 @@
 }
 
 @layer utilities {
+
   /* Gradient backgrounds for category cards */
   .gradient-coral {
     background: linear-gradient(135deg, hsl(16 100% 50%) 0%, hsl(340 100% 50%) 100%);
@@ -308,7 +311,7 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -319,7 +322,12 @@
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
   }
 }
