@@ -1,12 +1,27 @@
 import { useState } from 'react';
 import { Music, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isBackendConfigured } from '@/services/api';
+import { isBackendConfigured, setToken } from '@/services/api';
 import { AnimatedContainer } from '@/components/ui/animated-container';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const backendConfigured = isBackendConfigured();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Check for token in URL
+    const searchParams = new URLSearchParams(location.search);
+    const token = searchParams.get('token');
+
+    if (token) {
+      setToken(token); // Save token
+      navigate('/', { replace: true }); // Redirect to home
+    }
+  }, [location, navigate]);
 
   const handleSpotifyLogin = async () => {
     if (!backendConfigured) return;

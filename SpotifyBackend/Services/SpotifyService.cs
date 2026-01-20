@@ -22,24 +22,29 @@ public class SpotifyService
 
     public bool IsAuthenticated => GetToken() != null;
 
-    public void StoreToken(PKCETokenResponse token)
+    public string GenerateEncryptedToken(PKCETokenResponse token)
     {
         var tokenJson = JsonSerializer.Serialize(token);
-        var encryptedToken = _protector.Protect(tokenJson);
-
-        _httpContextAccessor.HttpContext?.Response.Cookies.Append(TokenCookieName, encryptedToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true, // Always secure
-            SameSite = SameSiteMode.None, // Cross-site compatible
-            Expires = DateTime.UtcNow.AddDays(7), // Persistent login
-            IsEssential = true
-        });
+        return _protector.Protect(tokenJson);
     }
 
     public PKCETokenResponse? GetToken()
     {
-        var encryptedToken = _httpContextAccessor.HttpContext?.Request.Cookies[TokenCookieName];
+        // Try to get token from Authorization header
+        var authHeader = _httpContextAccessor.HttpContext?.Request.Headers["Authorization"].FirstOrDefault();
+        
+        string? encryptedToken = null;
+        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            encryptedToken = authHeader.Substring("Bearer ".Length).Trim();
+        }
+
+        // Fallback: Try Cookie (optional, in case we want hybrid support, but let's stick to header for now)
+        if (string.IsNullOrEmpty(encryptedToken))
+        {
+             encryptedToken = _httpContextAccessor.HttpContext?.Request.Cookies[TokenCookieName];
+        }
+
         if (string.IsNullOrEmpty(encryptedToken))
             return null;
 
@@ -50,12 +55,14 @@ public class SpotifyService
         }
         catch
         {
-            return null; // Invalid cookie/decryption fail
+            return null;
         }
     }
 
     public void ClearToken()
     {
+        // For stateless header auth, the client just discards the token.
+        // We can still try to delete the cookie just in case.
         _httpContextAccessor.HttpContext?.Response.Cookies.Delete(TokenCookieName);
     }
 
@@ -79,7 +86,7 @@ public class SpotifyService
     }
 
     /// <summary>
-    /// Get a SpotifyClient, automatically refreshing the token if needed
+    /// Get a SpotifyClient (Stateless: No auto-refresh on server)
     /// </summary>
     public SpotifyClient? GetClient()
     {
@@ -87,56 +94,17 @@ public class SpotifyService
         if (token == null)
             return null;
 
-        // Check if token needs refresh
-        if (IsTokenExpiredOrExpiring(token) && !string.IsNullOrEmpty(token.RefreshToken))
-        {
-            try
-            {
-                Console.WriteLine("Token expired or expiring soon, refreshing...");
-                var newToken = _authService.RefreshToken(token.RefreshToken).GetAwaiter().GetResult();
-                StoreToken(newToken);
-                token = newToken;
-                Console.WriteLine("Token refreshed successfully");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Token refresh failed: {ex.Message}");
-                // Clear invalid token to force re-login
-                ClearToken();
-                return null;
-            }
-        }
-
         return _authService.CreateClient(token);
     }
 
     /// <summary>
-    /// Get a SpotifyClient asynchronously with token refresh
+    /// Get a SpotifyClient asynchronously (Stateless: No auto-refresh on server)
     /// </summary>
     public async Task<SpotifyClient?> GetClientAsync()
     {
         var token = GetToken();
         if (token == null)
             return null;
-
-        // Check if token needs refresh
-        if (IsTokenExpiredOrExpiring(token) && !string.IsNullOrEmpty(token.RefreshToken))
-        {
-            try
-            {
-                Console.WriteLine("Token expired or expiring soon, refreshing...");
-                var newToken = await _authService.RefreshToken(token.RefreshToken);
-                StoreToken(newToken);
-                token = newToken;
-                Console.WriteLine("Token refreshed successfully");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Token refresh failed: {ex.Message}");
-                ClearToken();
-                return null;
-            }
-        }
 
         return _authService.CreateClient(token);
     }

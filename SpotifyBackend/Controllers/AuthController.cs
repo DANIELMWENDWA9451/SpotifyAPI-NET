@@ -34,10 +34,13 @@ public class AuthController : ControllerBase
         try
         {
             var token = await _authService.ExchangeCodeForToken(code);
-            _spotifyService.StoreToken(token);
-            // Redirect back to React App
+            // var encryptedToken = _spotifyService.GenerateEncryptedToken(token); // Method updated in previous step
+            // We need to call GenerateEncryptedToken which I added to SpotifyService
+            var encryptedToken = _spotifyService.GenerateEncryptedToken(token);
+
+            // Redirect back to React App with token in URL
             var frontendUrl = _configuration["FrontendUrl"] ?? "http://127.0.0.1:8080";
-            return Redirect(frontendUrl); 
+            return Redirect($"{frontendUrl}/login?token={Uri.EscapeDataString(encryptedToken)}"); 
         }
         catch (Exception ex)
         {
