@@ -16,10 +16,10 @@ import type {
 } from '@/types/spotify';
 
 // Configuration - Set your deployed backend URL in environment variables
-// Configuration - Set your deployed backend URL in environment variables
-// If VITE_API_BASE_URL is not set, we default to empty string (relative path)
-// to leverage Vercel rewrites/proxying
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+// Configuration
+// In development, use the env var (or default to localhost).
+// In production, force empty string to use relative path (Vercel Proxy).
+const API_BASE_URL = import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') : '';
 
 // Check if backend is configured (always true now as we support relative paths)
 export const isBackendConfigured = (): boolean => true;
@@ -46,7 +46,16 @@ async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T
   }
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    const errorText = await response.text();
+    let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorJson = JSON.parse(errorText);
+      if (errorJson.error) errorMessage = errorJson.error;
+    } catch {
+      // If parsing fails, use text or default message
+      if (errorText) errorMessage = errorText;
+    }
+    throw new Error(errorMessage);
   }
 
   const text = await response.text();
