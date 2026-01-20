@@ -32,6 +32,25 @@ jobs:
       - name: Publish
         run: dotnet publish SpotifyBackend/SpotifyBackend.csproj --configuration Release --output ./publish --no-build
 
+      - name: Create app_offline.htm
+        run: |
+          mkdir offline
+          echo "<html><head><title>Updating</title></head><body><h1>Updating...</h1></body></html>" > offline/app_offline.htm
+          copy offline/app_offline.htm ./publish/app_offline.htm
+
+      - name: Take App Offline
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./offline/
+          server-dir: /danspotify/
+          dangerous-clean-slate: false
+
+      - name: Wait for IIS to release files
+        run: Start-Sleep -Seconds 10
+
       - name: Deploy to SmarterASP via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -41,3 +60,21 @@ jobs:
           local-dir: ./publish/
           server-dir: /danspotify/
           dangerous-clean-slate: false
+
+      - name: Bring App Online
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          $ftpUrl = "ftp://$env:FTP_SERVER/danspotify/app_offline.htm"
+          $request = [System.Net.FtpWebRequest]::Create($ftpUrl)
+          $request.Method = [System.Net.WebRequestMethods+Ftp]::DeleteFile
+          $request.Credentials = New-Object System.Net.NetworkCredential("$env:FTP_USERNAME", "$env:FTP_PASSWORD")
+          try {
+              $request.GetResponse()
+              Write-Host "Successfully deleted app_offline.htm"
+          } catch {
+              Write-Host "Error deleting app_offline.htm: $_"
+              # Don't fail the build if file is already gone
+          }
