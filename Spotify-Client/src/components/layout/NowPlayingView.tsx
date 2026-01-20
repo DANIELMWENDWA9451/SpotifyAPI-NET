@@ -109,41 +109,69 @@ function LyricsDisplay({ trackId, track }: { trackId: string; track: SpotifyTrac
     };
   }, [playbackState?.is_playing]); // ONLY depend on playing state
 
+  // Smart Auto-Scroll State
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
+
   const lyricsData = data as LyricsData | null;
   const lines = lyricsData?.lyrics?.lines || [];
 
   const activeLineIndex = lines.findIndex((line, index) => {
     const nextLine = lines[index + 1];
-    const currentTime = localProgress; // Use the smooth local time
+    const currentTime = localProgress;
     const startTime = parseInt(line.startTimeMs);
     const endTime = nextLine ? parseInt(nextLine.startTimeMs) : Infinity;
     return currentTime >= startTime && currentTime < endTime;
   });
 
-  // Initial scroll: Jump to active line immediately when panel opens
-  // Use trackId to detect actual track changes vs component remounts
-  const lastScrolledTrackRef = useRef<string | null>(null);
-  useEffect(() => {
-    // Only do initial scroll if track changed (not just route change)
-    if (lines.length > 0 && activeLineRef.current && lastScrolledTrackRef.current !== trackId) {
-      // Instant scroll on initial load or track change
-      activeLineRef.current.scrollIntoView({
-        behavior: 'instant',
-        block: 'center',
-      });
-      lastScrolledTrackRef.current = trackId;
-    }
-  }, [lines.length, trackId]); // Only depend on trackId, not activeLineIndex
+  // Handle Scroll Interaction
+  const handleScroll = () => {
+    if (!containerRef.current) return;
 
-  // Continuous scroll: Smooth tracking as song plays (only after initial scroll)
-  useEffect(() => {
-    if (lastScrolledTrackRef.current === trackId && activeLineRef.current && containerRef.current) {
-      activeLineRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
+    // Simple detection: if the user scrolls, we disable auto-scroll
+    // We rely on the "Resume" button to re-enable it.
+    if (!isUserScrolling) {
+      setIsUserScrolling(true);
+    }
+  };
+
+  const scrollToActiveLine = (behavior: ScrollBehavior = 'smooth') => {
+    if (activeLineRef.current && containerRef.current) {
+      const container = containerRef.current;
+      const line = activeLineRef.current;
+
+      // Calculate center position
+      const containerHeight = container.clientHeight;
+      const lineHeight = line.clientHeight;
+      const lineTop = line.offsetTop;
+      const scrollTop = lineTop - containerHeight / 2 + lineHeight / 2;
+
+      container.scrollTo({
+        top: Math.max(0, scrollTop),
+        behavior: behavior
       });
     }
-  }, [activeLineIndex, trackId]);
+  };
+
+  const handleResumeSync = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsUserScrolling(false);
+    scrollToActiveLine('smooth');
+  };
+
+  // Auto-Scroll Effect
+  useEffect(() => {
+    if (!isUserScrolling && activeLineIndex !== -1) {
+      scrollToActiveLine('smooth');
+    }
+  }, [activeLineIndex, isUserScrolling]);
+
+  // Initial load scroll
+  useEffect(() => {
+    if (lines.length > 0 && !isUserScrolling) {
+      scrollToActiveLine('instant');
+    }
+  }, [trackId, lines.length]);
 
   if (isLoading) {
     return (
@@ -157,17 +185,17 @@ function LyricsDisplay({ trackId, track }: { trackId: string; track: SpotifyTrac
 
   if (error || !lines.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center py-20">
-        <Music className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h4 className="font-semibold mb-2">Lyrics couldn't be loaded</h4>
-        <p className="text-sm text-muted-foreground mb-6">
-          We couldn't fetch lyrics for this track. It might be instrumental or lyrics are restricted.
+      <div className="flex flex-col items-center justify-center h-full text-center py-20 px-6">
+        <Music className="h-16 w-16 text-neutral-600 mx-auto mb-6" />
+        <h4 className="font-bold text-lg mb-2">No synchronized lyrics</h4>
+        <p className="text-sm text-muted-foreground mb-6 max-w-[200px] mx-auto">
+          We couldn't synchronize lyrics for this track perfectly.
         </p>
         <a
           href={`https://open.spotify.com/track/${track.id}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-surface-2 text-foreground rounded-full text-sm font-medium hover:bg-surface-3 transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-full text-sm font-bold transition-all hover:scale-105"
         >
           <ExternalLink className="h-4 w-4" />
           Open in Spotify
@@ -178,98 +206,84 @@ function LyricsDisplay({ trackId, track }: { trackId: string; track: SpotifyTrac
 
   const isSynced = lyricsData?.lyrics?.syncType === 'LINE_SYNCED';
 
-  // UNSYNCED LYRICS - Static Display
+  // UNSYNCED LYRICS
   if (!isSynced && lines.length > 0) {
     return (
-      <div ref={containerRef} className="flex-1 overflow-y-auto space-y-4 py-4">
-        {/* Track Info Header */}
-        <div className="text-center mb-6 pb-4 border-b border-border/50">
-          <h3 className="font-bold text-xl">{track.name}</h3>
+      <div className="flex-1 overflow-y-auto space-y-4 py-8 px-6">
+        <div className="mb-8">
+          <h3 className="font-bold text-2xl mb-1">{track.name}</h3>
           <p className="text-muted-foreground">{track.artists[0].name}</p>
         </div>
-
-        {/* Notice */}
-        <div className="bg-amber-500/10 text-amber-400 text-sm px-4 py-2 rounded-lg text-center mb-4">
-          ⚠️ Synced lyrics not available. Showing plain lyrics.
-        </div>
-
-        {/* Static Lyrics List */}
         {lines.map((line, index) => (
-          line.words.trim() ? (
-            <div
-              key={index}
-              className="text-lg font-medium leading-relaxed py-2 px-6 text-foreground/80"
-            >
-              {line.words}
-            </div>
-          ) : null
+          <p key={index} className="text-lg font-medium text-neutral-300 leading-relaxed">{line.words}</p>
         ))}
-
-        <div className="text-center pt-8 pb-4">
-          <p className="text-xs text-muted-foreground">
-            Source: {lyricsData?.lyrics?.providerDisplayName || 'LrcLib'}
-          </p>
-        </div>
       </div>
     );
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 overflow-y-auto space-y-4 py-8 scroll-smooth relative"
-      style={{
-        maskImage: "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)",
-        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)",
-      }}
-    >
-      {/* Track Info Header - Floating */}
-      <div className="text-center mb-8 sticky top-0 pt-4 pb-6 bg-gradient-to-b from-surface-1 via-surface-1/95 to-transparent z-10">
-        <h3 className="font-bold text-2xl bg-gradient-to-r from-primary to-green-400 bg-clip-text text-transparent">{track.name}</h3>
-        <p className="text-muted-foreground text-sm mt-1">{track.artists[0].name}</p>
+    <div className="relative h-full flex flex-col">
+      <div
+        ref={containerRef}
+        onScroll={handleScroll} // Detect User Scroll
+        className="flex-1 overflow-y-auto py-[50vh] px-6 scroll-smooth no-scrollbar"
+        style={{
+          maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+        }}
+      >
+        {lines.map((line, index) => {
+          const isActive = index === activeLineIndex;
+          const isPast = index < activeLineIndex;
+          const distance = Math.abs(index - activeLineIndex);
+
+          // blur calculation based on distance
+          const blurAmount = isActive ? 0 : Math.min(6, distance * 0.8);
+          const opacity = isActive ? 1 : Math.max(0.4, 1 - distance * 0.15);
+          const scale = isActive ? 1.05 : 0.98;
+
+          return (
+            <div
+              key={index}
+              ref={isActive ? activeLineRef : null}
+              onClick={() => {
+                playerApi.seek(parseInt(line.startTimeMs));
+                setIsUserScrolling(false); // Snap back to sync on click
+              }}
+              className={cn(
+                "relative transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] py-3 cursor-pointer origin-left",
+                isActive ? "text-white font-bold text-2xl md:text-3xl my-6 drop-shadow-2xl" : "text-neutral-400 font-medium text-lg md:text-xl hover:text-white"
+              )}
+              style={{
+                filter: `blur(${blurAmount}px)`,
+                opacity: opacity,
+                transform: `scale(${scale}) translateZ(0)`,
+                willChange: "transform, opacity, filter"
+              }}
+            >
+              {line.words}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Synced Lyrics - Premium Animation */}
-      {lines.map((line, index) => {
-        const isActive = index === activeLineIndex;
-        const isPast = index < activeLineIndex;
-        const distance = Math.abs(index - activeLineIndex);
+      {/* Floating Resume Sync Button */}
+      <div className={cn(
+        "absolute bottom-8 right-6 transition-all duration-500 transform",
+        isUserScrolling ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"
+      )}>
+        <button
+          onClick={handleResumeSync}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-full shadow-xl hover:scale-105 transition-transform"
+        >
+          <ChevronDown className="h-4 w-4" />
+          Resume Sync
+        </button>
+      </div>
 
-        return (
-          <div
-            key={index}
-            ref={isActive ? activeLineRef : null}
-            onClick={() => playerApi.seek(parseInt(line.startTimeMs))}
-            className={cn(
-              "leading-relaxed py-4 rounded-xl px-6 cursor-pointer",
-              "transition-all ease-[cubic-bezier(0.4,0,0.2,1)]",
-              isActive
-                ? "text-2xl font-bold text-white scale-[1.08] my-2"
-                : isPast
-                  ? "text-lg font-medium text-muted-foreground/40 blur-[0.5px] hover:blur-0 hover:text-muted-foreground/70"
-                  : "text-lg font-medium text-foreground/60 hover:text-foreground hover:scale-[1.03]"
-            )}
-            style={{
-              willChange: "transform, opacity, filter",
-              transitionDuration: isActive ? "400ms" : "300ms",
-              ...(isActive && {
-                background: "linear-gradient(135deg, rgba(29, 185, 84, 0.25) 0%, rgba(29, 185, 84, 0.1) 100%)",
-                boxShadow: "0 0 30px rgba(29, 185, 84, 0.3), 0 4px 15px rgba(0,0,0,0.2)",
-                borderLeft: "4px solid #1DB954",
-                paddingLeft: "1.25rem",
-              }),
-              // Fade out lines that are far from active
-              opacity: isActive ? 1 : Math.max(0.3, 1 - distance * 0.08),
-            }}
-          >
-            {line.words}
-          </div>
-        );
-      })}
-
-      <div className="text-center pt-8 pb-4">
-        <p className="text-xs text-muted-foreground">
-          Source: {lyricsData?.lyrics?.providerDisplayName || 'Spotify'}
+      <div className="text-center pb-2 pt-2 bg-gradient-to-t from-surface-1 to-transparent">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest opacity-50">
+          Lyrics by {lyricsData?.lyrics?.providerDisplayName || 'Spotify'}
         </p>
       </div>
     </div>
