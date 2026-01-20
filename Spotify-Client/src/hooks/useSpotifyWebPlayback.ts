@@ -241,18 +241,8 @@ export function useSpotifyWebPlayback() {
   // Get access token from backend
   const getAccessToken = useCallback(async (): Promise<string | null> => {
     try {
-      // The backend should provide a fresh access token
-      // This endpoint should be implemented in your ASP.NET backend
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/auth/token`,
-        { credentials: 'include' }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to get access token');
-      }
-
-      const data = await response.json();
+      // The backend should provide a fresh access token using the encrypted token header
+      const data = await authApi.getToken();
       return data.access_token;
     } catch (error) {
       console.error('Failed to get access token:', error);

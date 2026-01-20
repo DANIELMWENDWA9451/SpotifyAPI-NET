@@ -93,6 +93,7 @@ export const authApi = {
     return apiRequest<{ isAuthenticated: boolean; user?: SpotifyUser }>('/api/auth/check');
   },
   callback: (code: string) => apiRequest<{ success: boolean }>(`/api/auth/callback?code=${code}`),
+  getToken: () => apiRequest<{ access_token: string }>('/api/auth/token'),
 };
 
 // User API
