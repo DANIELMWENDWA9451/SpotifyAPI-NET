@@ -21,6 +21,13 @@ import type {
 // In production, force empty string to use relative path (Vercel Proxy).
 const API_BASE_URL = import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') : '';
 
+// Token Management
+const TOKEN_KEY = 'spotify_auth_token';
+
+export const setToken = (token: string) => localStorage.setItem(TOKEN_KEY, token);
+export const getToken = () => localStorage.getItem(TOKEN_KEY);
+export const removeToken = () => localStorage.removeItem(TOKEN_KEY);
+
 // Check if backend is configured (always true now as we support relative paths)
 export const isBackendConfigured = (): boolean => true;
 
@@ -28,18 +35,27 @@ export const isBackendConfigured = (): boolean => true;
 async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
   // Relative path logic relies on API_BASE_URL being empty string
 
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options?.headers,
+  };
+
+  const token = getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    credentials: 'include',
+    headers,
+    // credentials: 'include', // Cookies NO LONGER NEEDED for Auth (but maybe for verifier? No, verifier is backend-only)
+    // Actually, let's keep it 'include' just in case, it doesn't hurt.
   });
 
   if (response.status === 401) {
     // Only redirect to login if not already on the login page
     if (!window.location.pathname.includes('/login')) {
+      removeToken(); // Clear invalid token
       window.location.href = '/login';
     }
     throw new Error('Unauthorized');
@@ -67,8 +83,15 @@ export const authApi = {
   login: () => {
     window.location.href = `${API_BASE_URL}/api/auth/login`;
   },
-  logout: () => apiRequest<void>('/api/auth/logout', { method: 'POST' }),
-  checkAuth: () => apiRequest<{ isAuthenticated: boolean; user?: SpotifyUser }>('/api/auth/check'),
+  logout: () => {
+    removeToken();
+    return apiRequest<void>('/api/auth/logout', { method: 'POST' });
+  },
+  checkAuth: async () => {
+    // If we don't have a token, we are definitely not authenticated
+    if (!getToken()) return { isAuthenticated: false };
+    return apiRequest<{ isAuthenticated: boolean; user?: SpotifyUser }>('/api/auth/check');
+  },
   callback: (code: string) => apiRequest<{ success: boolean }>(`/api/auth/callback?code=${code}`),
 };
 
