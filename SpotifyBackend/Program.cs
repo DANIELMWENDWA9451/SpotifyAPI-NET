@@ -17,16 +17,12 @@ builder.Services.AddSession(options =>
 });
 
 // Add CORS
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ReactApp", builder =>
     {
-        builder.WithOrigins(
-            "http://localhost:3000", 
-            "http://localhost:8080",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:8080"
-        )
+        builder.WithOrigins(allowedOrigins)
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials();
