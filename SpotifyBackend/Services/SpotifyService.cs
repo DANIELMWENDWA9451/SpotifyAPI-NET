@@ -4,40 +4,59 @@ using SpotifyAPI.Web;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
+using Microsoft.AspNetCore.DataProtection;
+
 public class SpotifyService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly SpotifyAuthService _authService;
-    private const string TokenSessionKey = "SpotifyToken";
+    private readonly IDataProtector _protector;
+    private const string TokenCookieName = "spotify_auth";
 
-    public SpotifyService(IHttpContextAccessor httpContextAccessor, SpotifyAuthService authService)
+    public SpotifyService(IHttpContextAccessor httpContextAccessor, SpotifyAuthService authService, IDataProtectionProvider provider)
     {
         _httpContextAccessor = httpContextAccessor;
         _authService = authService;
+        _protector = provider.CreateProtector("SpotifyService");
     }
 
-    private ISession Session => _httpContextAccessor.HttpContext!.Session;
-
-    public bool IsAuthenticated => Session.GetString(TokenSessionKey) != null;
+    public bool IsAuthenticated => GetToken() != null;
 
     public void StoreToken(PKCETokenResponse token)
     {
         var tokenJson = JsonSerializer.Serialize(token);
-        Session.SetString(TokenSessionKey, tokenJson);
+        var encryptedToken = _protector.Protect(tokenJson);
+
+        _httpContextAccessor.HttpContext?.Response.Cookies.Append(TokenCookieName, encryptedToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true, // Always secure
+            SameSite = SameSiteMode.None, // Cross-site compatible
+            Expires = DateTime.UtcNow.AddDays(7), // Persistent login
+            IsEssential = true
+        });
     }
 
     public PKCETokenResponse? GetToken()
     {
-        var tokenJson = Session.GetString(TokenSessionKey);
-        if (string.IsNullOrEmpty(tokenJson))
+        var encryptedToken = _httpContextAccessor.HttpContext?.Request.Cookies[TokenCookieName];
+        if (string.IsNullOrEmpty(encryptedToken))
             return null;
 
-        return JsonSerializer.Deserialize<PKCETokenResponse>(tokenJson);
+        try
+        {
+            var tokenJson = _protector.Unprotect(encryptedToken);
+            return JsonSerializer.Deserialize<PKCETokenResponse>(tokenJson);
+        }
+        catch
+        {
+            return null; // Invalid cookie/decryption fail
+        }
     }
 
     public void ClearToken()
     {
-        Session.Remove(TokenSessionKey);
+        _httpContextAccessor.HttpContext?.Response.Cookies.Delete(TokenCookieName);
     }
 
     public string? GetAccessToken()

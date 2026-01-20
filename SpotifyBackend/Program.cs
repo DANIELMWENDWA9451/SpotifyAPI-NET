@@ -4,18 +4,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.AddHttpContextAccessor();
+// Add Data Protection
+builder.Services.AddDataProtection();
 
-// Add session support
-builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSession(options =>
-{
-    options.IdleTimeout = TimeSpan.FromHours(24);
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
-    options.Cookie.SameSite = SameSiteMode.None; // Required for cross-site (Vercel -> Backend)
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Required for SameSite=None
-});
+// Add HttpContextAccessor
+builder.Services.AddHttpContextAccessor();
 
 // Add CORS
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
@@ -43,7 +36,7 @@ builder.Services.AddScoped<ILyricsService, LyricsService>();
 var app = builder.Build();
 
 app.UseCors("ReactApp");
-app.UseSession();
+// app.UseSession(); // Removed for stateless auth
 app.UseAuthorization();
 
 app.MapControllers();
