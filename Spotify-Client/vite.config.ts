@@ -20,6 +20,14 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'robots.txt'],
+      devOptions: {
+        enabled: true, // Enable for dev testing too
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+      },
       manifest: {
         name: 'DanSpotify',
         short_name: 'DanSpotify',
