@@ -53,7 +53,8 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("ReactApp", builder =>
     {
-        builder.WithOrigins(allowedOrigins)
+        // Allow any origin dynamically to fix Vercel/Production CORS issues
+        builder.SetIsOriginAllowed(_ => true)
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials();
