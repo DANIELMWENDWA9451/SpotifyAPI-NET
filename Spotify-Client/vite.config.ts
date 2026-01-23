@@ -27,6 +27,9 @@ export default defineConfig(({ mode }) => ({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        // Exclude /api/* routes from service worker navigation handling
+        // This ensures API calls go directly to the network (via Vercel proxy)
+        navigateFallbackDenylist: [/^\/api/],
       },
       manifest: {
         name: 'DanSpotify',
