@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://coxward234-001-site1.ktempurl.com/api/$1"
+      "destination": "https://coxward-001-site1.ltempurl.com/api/$1"
     },
     {
       "source": "/(.*)",
