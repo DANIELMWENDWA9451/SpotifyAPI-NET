@@ -16,10 +16,9 @@ import type {
 } from '@/types/spotify';
 
 // Configuration - Set your deployed backend URL in environment variables
-// Configuration
-// In development, use the env var (or default to localhost).
-// In production, force empty string to use relative path (Vercel Proxy).
-const API_BASE_URL = import.meta.env.DEV ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') : '';
+// In development, default to localhost:5000.
+// In production, use VITE_API_BASE_URL env var if set, otherwise default to relative path (if using proxy).
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
 
 // Token Management
 const TOKEN_KEY = 'spotify_auth_token';
