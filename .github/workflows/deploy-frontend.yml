@@ -37,14 +37,17 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      - name: Pull Vercel Environment Information
+      - name: Deploy to Vercel
         working-directory: Spotify-Client
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build Project Artifacts (Vercel output)
-        working-directory: Spotify-Client
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy Prebuilt Artifacts to Vercel
-        working-directory: Spotify-Client
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          # Link to existing project
+          vercel link --yes --token=${{ secrets.VERCEL_TOKEN }}
+          # Pull project settings
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          # Build with Vercel's output format
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          # Deploy the pre-built output
+          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
