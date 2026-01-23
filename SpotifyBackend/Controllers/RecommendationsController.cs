@@ -32,6 +32,14 @@ public class RecommendationsController : ControllerBase
         {
             var request = new RecommendationsRequest();
             
+
+            // Validate initialization (Library should init them)
+            if (request.SeedArtists == null || request.SeedGenres == null || request.SeedTracks == null)
+            {
+                 _logger.LogError("RecommendationsRequest lists are null!");
+                 return StatusCode(500, new { error = "Internal Library Error" });
+            }
+
             // Spotify allows max 5 seeds total
             int seedCount = 0;
             
@@ -71,6 +79,7 @@ public class RecommendationsController : ControllerBase
             
             request.Limit = limit;
 
+            var userCountry = "unknown";
             // Add market from user profile if available, otherwise let Spotify use token country
             try 
             {
@@ -78,12 +87,15 @@ public class RecommendationsController : ControllerBase
                 if (!string.IsNullOrEmpty(user?.Country))
                 {
                     request.Market = user.Country;
+                    userCountry = user.Country;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to fetch user profile for recommendations market");
             }
+
+            _logger.LogInformation("Fetching recommendations. Seeds: {SeedCount}, Market: {Market}", seedCount, request.Market ?? "null");
 
             var recommendations = await client.Browse.GetRecommendations(request);
             
@@ -120,10 +132,15 @@ public class RecommendationsController : ControllerBase
                 tracks = tracksResult
             });
         }
+        catch (APIException apiEx)
+        {
+             _logger.LogError(apiEx, "Spotify API error fetching recommendations: {Message}", apiEx.Message);
+             return StatusCode((int)apiEx.Response.StatusCode, new { error = apiEx.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "GetRecommendations error");
-            return StatusCode(500, new { error = "Failed to load recommendations" });
+            return StatusCode(500, new { error = $"Failed to load recommendations: {ex.Message}" });
         }
     }
 

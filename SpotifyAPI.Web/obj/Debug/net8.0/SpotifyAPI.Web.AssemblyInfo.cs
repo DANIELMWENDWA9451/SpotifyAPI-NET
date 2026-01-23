@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyDescriptionAttribute(("\n      A Client for Spotify\'s Web API, written in .NET\n\n      For more infos, vis" +
     "it https://github.com/JohnnyCrazy/SpotifyAPI-NET\n    "))]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ef523ccc40b128702b93d238065a356bf764e615")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+478c54b65767a5b10c6572718a7bf511891123b5")]
 [assembly: System.Reflection.AssemblyProductAttribute("SpotifyAPI.Web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SpotifyAPI.Web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
