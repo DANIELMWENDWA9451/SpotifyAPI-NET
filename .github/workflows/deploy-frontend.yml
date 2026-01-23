@@ -23,31 +23,15 @@ jobs:
           cache: 'npm'
           cache-dependency-path: Spotify-Client/package-lock.json
 
-      - name: Install dependencies
-        working-directory: Spotify-Client
-        run: npm ci
-
-      - name: Build
-        working-directory: Spotify-Client
-        run: npm run build
-        # Note: VITE_API_BASE_URL is intentionally NOT set
-        # This makes the build use relative paths (/api/...) 
-        # which are proxied by vercel.json to the backend
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+      # Skip local build - Vercel will build from source
+      # The key is that VITE_API_BASE_URL is NOT set anywhere
+      # so the build will use relative paths for Vercel proxy
 
       - name: Deploy to Vercel
-        working-directory: Spotify-Client
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          # Link to existing project
-          vercel link --yes --token=${{ secrets.VERCEL_TOKEN }}
-          # Pull project settings
-          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-          # Build with Vercel's output format
-          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-          # Deploy the pre-built output
-          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: Spotify-Client
+          vercel-args: '--prod'
