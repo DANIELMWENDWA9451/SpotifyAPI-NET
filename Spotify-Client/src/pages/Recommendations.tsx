@@ -271,6 +271,7 @@ export default function Recommendations() {
     refetchOnMount: true,
   });
 
+  const isLoading = artistsLoading || followedLoading || topTracksLoading || recsLoading;
   const isError = !backendConfigured || (!isLoading && !recommendations && !topTracks);
 
   const toggleArtistSeed = (artistId: string) => {
@@ -287,7 +288,7 @@ export default function Recommendations() {
     return <WaitingForBackend />;
   }
 
-  const isLoading = artistsLoading || followedLoading || topTracksLoading || recsLoading;
+
   const recommendedTracks = recommendations?.tracks ?? [];
 
   return (
