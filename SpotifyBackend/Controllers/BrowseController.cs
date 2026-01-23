@@ -9,10 +9,12 @@ namespace SpotifyBackend.Controllers;
 public class BrowseController : ControllerBase
 {
     private readonly SpotifyService _spotifyService;
+    private readonly ILogger<BrowseController> _logger;
 
-    public BrowseController(SpotifyService spotifyService)
+    public BrowseController(SpotifyService spotifyService, ILogger<BrowseController> logger)
     {
         _spotifyService = spotifyService;
+        _logger = logger;
     }
 
     [HttpGet("categories")]
@@ -42,8 +44,27 @@ public class BrowseController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GetCategories error: {ex.Message}");
+            _logger.LogError(ex, "GetCategories error");
             return Ok(new object[] { });
+        }
+    }
+
+    [HttpGet("markets")]
+    public async Task<IActionResult> GetMarkets()
+    {
+        if (!_spotifyService.IsAuthenticated) return Unauthorized();
+        var client = _spotifyService.GetClient();
+        if (client == null) return Unauthorized();
+
+        try 
+        {
+            var markets = await client.Markets.AvailableMarkets();
+            return Ok(markets.Markets);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetMarkets error");
+            return StatusCode(500, new { error = "Failed to fetch markets" });
         }
     }
 
@@ -93,7 +114,7 @@ public class BrowseController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GetCategoriesWithContent error: {ex.Message}");
+            _logger.LogError(ex, "GetCategoriesWithContent error");
             return Ok(new object[] { });
         }
     }
@@ -166,7 +187,7 @@ public class BrowseController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GetFeaturedPlaylists error: {ex.Message}");
+            _logger.LogError(ex, "GetFeaturedPlaylists error");
             return Ok(new { message = "", playlists = Array.Empty<object>() });
         }
     }
@@ -194,7 +215,7 @@ public class BrowseController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GetCategory error: {ex.Message}");
+            _logger.LogError(ex, "GetCategory error");
             return Ok(new { id = id, name = "", icons = Array.Empty<object>() });
         }
     }
@@ -221,11 +242,11 @@ public class BrowseController : ControllerBase
         }
         catch (APIException ex) when (ex.Response?.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            Console.WriteLine($"GetCategoryPlaylists: No playlists for '{id}' in country '{country}'");
+             _logger.LogWarning(ex, "GetCategoryPlaylists: No playlists for '{Id}' in country '{Country}'", id, country);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GetCategoryPlaylists error: {ex.Message}");
+             _logger.LogError(ex, "GetCategoryPlaylists error");
         }
 
         // Try 2: Get playlists without country (global)
@@ -240,7 +261,7 @@ public class BrowseController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GetCategoryPlaylists global fallback error: {ex.Message}");
+            _logger.LogWarning(ex, "GetCategoryPlaylists global fallback error");
         }
 
         // Try 3: FALLBACK - Search for playlists by category name
@@ -255,7 +276,9 @@ public class BrowseController : ControllerBase
             }
             catch { /* Use ID as search term */ }
 
-            Console.WriteLine($"Falling back to search for: {categoryName} playlists");
+
+
+            _logger.LogInformation("Falling back to search for: {CategoryName} playlists", categoryName);
             var searchResults = await client.Search.Item(new SearchRequest(SearchRequest.Types.Playlist, $"{categoryName} playlist")
             {
                 Limit = limit,
@@ -269,9 +292,10 @@ public class BrowseController : ControllerBase
                 return Ok(searchPlaylists.Where(p => p != null).Select(p => MapPlaylist(p!)));
             }
         }
+
         catch (Exception ex)
         {
-            Console.WriteLine($"GetCategoryPlaylists search fallback error: {ex.Message}");
+            _logger.LogError(ex, "GetCategoryPlaylists search fallback error");
         }
 
         return Ok(Array.Empty<object>());

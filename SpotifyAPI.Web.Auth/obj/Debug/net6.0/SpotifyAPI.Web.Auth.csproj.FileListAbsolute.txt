@@ -16,3 +16,4 @@ C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web.Auth\obj\Debug\net6.0\ref
 C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web.Auth\obj\Debug\net6.0\SpotifyAPI.Web.Auth.xml
 C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web.Auth\obj\Debug\net6.0\SpotifyAPI.Web.Auth.pdb
 C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web.Auth\obj\Debug\net6.0\ref\SpotifyAPI.Web.Auth.dll
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web.Auth\obj\Debug\net6.0\SpotifyAPI.Web.Auth.sourcelink.json

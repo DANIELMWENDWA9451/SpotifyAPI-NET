@@ -103,15 +103,22 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("token")]
-    public IActionResult GetToken()
+    public async Task<IActionResult> GetToken()
     {
         if (!_spotifyService.IsAuthenticated)
             return Unauthorized(new { error = "Not authenticated" });
+
+        // Check if token needs refresh and get new encrypted token
+        var newEncryptedToken = await _spotifyService.RefreshTokenIfNeededAsync();
         
         var accessToken = _spotifyService.GetAccessToken();
         if (string.IsNullOrEmpty(accessToken))
             return Unauthorized(new { error = "No access token available" });
-            
-        return Ok(new { access_token = accessToken });
+        
+        // Return access token and optionally the new encrypted token for client storage
+        return Ok(new { 
+            access_token = accessToken,
+            new_token = newEncryptedToken // null if no refresh was needed
+        });
     }
 }

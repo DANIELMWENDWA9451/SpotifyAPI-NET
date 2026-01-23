@@ -9,10 +9,12 @@ namespace SpotifyBackend.Controllers;
 public class RecommendationsController : ControllerBase
 {
     private readonly SpotifyService _spotifyService;
+    private readonly ILogger<RecommendationsController> _logger;
 
-    public RecommendationsController(SpotifyService spotifyService)
+    public RecommendationsController(SpotifyService spotifyService, ILogger<RecommendationsController> logger)
     {
         _spotifyService = spotifyService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -69,11 +71,18 @@ public class RecommendationsController : ControllerBase
             
             request.Limit = limit;
 
-            // Add market from user profile
-            var user = await _spotifyService.GetCurrentUserProfile();
-            if (user?.Country != null)
+            // Add market from user profile if available, otherwise let Spotify use token country
+            try 
             {
-                request.Market = user.Country;
+                var user = await _spotifyService.GetCurrentUserProfile();
+                if (!string.IsNullOrEmpty(user?.Country))
+                {
+                    request.Market = user.Country;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to fetch user profile for recommendations market");
             }
 
             var recommendations = await client.Browse.GetRecommendations(request);
@@ -113,8 +122,8 @@ public class RecommendationsController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GetRecommendations error: {ex.Message}");
-            return Ok(new { seeds = Array.Empty<object>(), tracks = Array.Empty<object>() });
+            _logger.LogError(ex, "GetRecommendations error");
+            return StatusCode(500, new { error = "Failed to load recommendations" });
         }
     }
 

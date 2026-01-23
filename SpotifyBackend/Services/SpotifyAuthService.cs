@@ -2,6 +2,7 @@ namespace SpotifyBackend.Services;
 
 using SpotifyAPI.Web;
 using SpotifyAPI.Web.Auth;
+using SpotifyAPI.Web.Http;
 using System.Threading;
 
 using Microsoft.AspNetCore.DataProtection;
@@ -14,7 +15,9 @@ public class SpotifyAuthService
     private readonly IDataProtector _protector;
     private const string VerifierCookieName = "spotify_verifier";
 
-    public SpotifyAuthService(IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IDataProtectionProvider provider)
+    private readonly IHttpClientFactory _httpClientFactory;
+
+    public SpotifyAuthService(IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IDataProtectionProvider provider, IHttpClientFactory httpClientFactory)
     {
         _clientId = configuration["Spotify:ClientId"] 
             ?? throw new InvalidOperationException("Spotify ClientId not configured");
@@ -23,6 +26,7 @@ public class SpotifyAuthService
         _redirectUri = new Uri(redirectUriString);
         _httpContextAccessor = httpContextAccessor;
         _protector = provider.CreateProtector("SpotifyAuthService");
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<Uri> GetAuthorizationUri()
@@ -110,8 +114,12 @@ public class SpotifyAuthService
 
     public SpotifyClient CreateClient(PKCETokenResponse token)
     {
+        var httpClient = _httpClientFactory.CreateClient();
         var authenticator = new PKCEAuthenticator(_clientId, token);
-        var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(authenticator);
+        var config = SpotifyClientConfig.CreateDefault()
+            .WithAuthenticator(authenticator)
+            .WithHTTPClient(new NetHttpClient(httpClient));
+            
         return new SpotifyClient(config);
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SpotifyBackend.Services;
 using SpotifyAPI.Web;
+using System.ComponentModel.DataAnnotations;
 
 namespace SpotifyBackend.Controllers;
 
@@ -9,10 +10,12 @@ namespace SpotifyBackend.Controllers;
 public class PlaylistsController : ControllerBase
 {
     private readonly SpotifyService _spotifyService;
+    private readonly ILogger<PlaylistsController> _logger;
 
-    public PlaylistsController(SpotifyService spotifyService)
+    public PlaylistsController(SpotifyService spotifyService, ILogger<PlaylistsController> logger)
     {
         _spotifyService = spotifyService;
+        _logger = logger;
     }
 
     [HttpGet("{id}")]
@@ -95,11 +98,21 @@ public class PlaylistsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreatePlaylist([FromBody] CreatePlaylistRequest request)
     {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
         if (!_spotifyService.IsAuthenticated) return Unauthorized();
-        var playlist = await _spotifyService.CreatePlaylist(request.Name, request.Description, request.Public);
-        if (playlist == null) return BadRequest();
         
-        return Ok(new { id = playlist.Id, name = playlist.Name, uri = playlist.Uri });
+        try 
+        {
+            var playlist = await _spotifyService.CreatePlaylist(request.Name, request.Description, request.Public);
+            if (playlist == null) return BadRequest("Failed to create playlist");
+            
+            return Ok(new { id = playlist.Id, name = playlist.Name, uri = playlist.Uri });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating playlist {Name}", request.Name);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
     }
 
     [HttpPost("{id}/tracks")]
@@ -118,7 +131,11 @@ public class PlaylistsController : ControllerBase
         return success ? Ok() : BadRequest();
     }
 
-    public record CreatePlaylistRequest(string Name, string? Description = null, bool Public = true);
-    public record AddTracksRequest(List<string> Uris);
-    public record RemoveTracksRequest(List<string> Uris);
+    public record CreatePlaylistRequest(
+        [Required, StringLength(100, MinimumLength = 1)] string Name, 
+        string? Description = null, 
+        bool Public = true
+    );
+    public record AddTracksRequest([Required] List<string> Uris);
+    public record RemoveTracksRequest([Required] List<string> Uris);
 }

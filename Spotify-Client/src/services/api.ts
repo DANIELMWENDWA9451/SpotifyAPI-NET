@@ -93,7 +93,14 @@ export const authApi = {
     return apiRequest<{ isAuthenticated: boolean; user?: SpotifyUser }>('/api/auth/check');
   },
   callback: (code: string) => apiRequest<{ success: boolean }>(`/api/auth/callback?code=${code}`),
-  getToken: () => apiRequest<{ access_token: string }>('/api/auth/token'),
+  getToken: async () => {
+    const response = await apiRequest<{ access_token: string; new_token?: string }>('/api/auth/token');
+    // If backend returned a refreshed token, update our stored token
+    if (response.new_token) {
+      setToken(response.new_token);
+    }
+    return response;
+  },
 };
 
 // User API
@@ -313,6 +320,7 @@ export const browseApi = {
     apiRequest<{ message: string; playlists: SpotifyPlaylist[] }>(`/api/browse/featured-playlists?limit=${limit}&offset=${offset}`),
   getNewReleases: (limit = 20, offset = 0) =>
     apiRequest<SpotifyAlbum[]>(`/api/browse/new-releases?limit=${limit}&offset=${offset}`),
+  getMarkets: () => apiRequest<string[]>('/api/browse/markets'),
 };
 
 // Recommendations API

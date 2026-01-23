@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SpotifyBackend.Services;
 using SpotifyAPI.Web;
+using System.ComponentModel.DataAnnotations;
 
 namespace SpotifyBackend.Controllers;
 
@@ -9,14 +10,18 @@ namespace SpotifyBackend.Controllers;
 public class SearchController : ControllerBase
 {
     private readonly SpotifyService _spotifyService;
+    private readonly ILogger<SearchController> _logger;
 
-    public SearchController(SpotifyService spotifyService)
+    public SearchController(SpotifyService spotifyService, ILogger<SearchController> logger)
     {
         _spotifyService = spotifyService;
+        _logger = logger;
     }
 
     [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] string q, [FromQuery] string type = "track,artist,album,playlist")
+    public async Task<IActionResult> Search(
+        [FromQuery, Required, StringLength(200, MinimumLength = 1)] string q, 
+        [FromQuery] string type = "track,artist,album,playlist")
     {
         if (!_spotifyService.IsAuthenticated) return Unauthorized();
         if (string.IsNullOrEmpty(q)) return BadRequest("Query required");
@@ -84,9 +89,8 @@ public class SearchController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Search error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return StatusCode(500, new { error = ex.Message });
+            _logger.LogError(ex, "Search error for query {Query}", q);
+            return StatusCode(500, new { error = "Search failed" });
         }
     }
 

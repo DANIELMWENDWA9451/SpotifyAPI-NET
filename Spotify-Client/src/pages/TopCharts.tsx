@@ -5,7 +5,7 @@ import { Play, Pause, Heart, MoreHorizontal, AlertCircle, TrendingUp, Globe2, Mu
 import { cn } from '@/lib/utils';
 import { AnimatedContainer } from '@/components/ui/animated-container';
 import { SkeletonCard, SkeletonTrackRow } from '@/components/ui/skeleton-cards';
-import { browseApi, userApi, isBackendConfigured } from '@/services/api';
+import { browseApi, userApi, isBackendConfigured, playerApi } from '@/services/api';
 import { usePlayerStore } from '@/stores/playerStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -17,23 +17,25 @@ import {
 } from '@/components/ui/select';
 import type { SpotifyTrack, SpotifyAlbum, SpotifyArtist } from '@/types/spotify';
 
-const COUNTRIES = [
-  { code: 'global', name: 'Global', flag: '🌍' },
-  { code: 'US', name: 'United States', flag: '🇺🇸' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
-  { code: 'FR', name: 'France', flag: '🇫🇷' },
-  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
-  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
-  { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
-  { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
-  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
-  { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-  { code: 'IN', name: 'India', flag: '🇮🇳' },
-  { code: 'SE', name: 'Sweden', flag: '🇸🇪' },
-];
+// Helper to generate flag emoji from country code
+function getFlagEmoji(countryCode: string) {
+  if (countryCode === 'global') return '🌍';
+  const codePoints = countryCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0));
+  return String.fromCodePoint(...codePoints);
+}
+
+// Helper to get country display name
+function getCountryName(code: string) {
+  if (code === 'global') return 'Global';
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || code;
+  } catch {
+    return code;
+  }
+}
 
 function formatDuration(ms: number): string {
   const minutes = Math.floor(ms / 60000);
@@ -41,9 +43,9 @@ function formatDuration(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-function TrackRow({ track, index, isPlaying, onPlay }: { 
-  track: SpotifyTrack; 
-  index: number; 
+function TrackRow({ track, index, isPlaying, onPlay }: {
+  track: SpotifyTrack;
+  index: number;
   isPlaying: boolean;
   onPlay: () => void;
 }) {
@@ -103,8 +105,8 @@ function TrackRow({ track, index, isPlaying, onPlay }: {
             <p className="text-sm text-muted-foreground truncate">
               {track.artists.map((artist, i) => (
                 <span key={artist.id}>
-                  <Link 
-                    to={`/artist/${artist.id}`} 
+                  <Link
+                    to={`/artist/${artist.id}`}
                     className="hover:text-foreground hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -118,7 +120,7 @@ function TrackRow({ track, index, isPlaying, onPlay }: {
         </div>
 
         <div className="flex items-center min-w-0">
-          <Link 
+          <Link
             to={`/album/${track.album?.id}`}
             className="text-sm text-muted-foreground truncate hover:text-foreground hover:underline"
           >
@@ -153,7 +155,7 @@ function TrackRow({ track, index, isPlaying, onPlay }: {
 
 function AlbumCard({ album, index }: { album: SpotifyAlbum; index: number }) {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   const getRankBadge = (rank: number) => {
     if (rank === 1) return { bg: 'bg-yellow-500', text: '🥇' };
     if (rank === 2) return { bg: 'bg-gray-400', text: '🥈' };
@@ -165,7 +167,7 @@ function AlbumCard({ album, index }: { album: SpotifyAlbum; index: number }) {
 
   return (
     <AnimatedContainer delay={Math.min(index * 40, 300)} animation="scale-in">
-      <Link 
+      <Link
         to={`/album/${album.id}`}
         className="group relative bg-surface-2/50 hover:bg-surface-2 rounded-md p-4 transition-all duration-300 block transform hover:-translate-y-1"
         onMouseEnter={() => setIsHovered(true)}
@@ -180,8 +182,8 @@ function AlbumCard({ album, index }: { album: SpotifyAlbum; index: number }) {
               isHovered && "scale-105"
             )}
           />
-          <button 
-            onClick={(e) => e.preventDefault()} 
+          <button
+            onClick={(e) => e.preventDefault()}
             className={cn(
               "absolute bottom-2 right-2 w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-xl transition-all duration-300",
               "hover:scale-110 active:scale-95",
@@ -209,7 +211,7 @@ function AlbumCard({ album, index }: { album: SpotifyAlbum; index: number }) {
 
 function ArtistCard({ artist, index }: { artist: SpotifyArtist; index: number }) {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   const getRankBadge = (rank: number) => {
     if (rank === 1) return { bg: 'bg-yellow-500', text: '🥇' };
     if (rank === 2) return { bg: 'bg-gray-400', text: '🥈' };
@@ -221,7 +223,7 @@ function ArtistCard({ artist, index }: { artist: SpotifyArtist; index: number })
 
   return (
     <AnimatedContainer delay={Math.min(index * 40, 300)} animation="scale-in">
-      <Link 
+      <Link
         to={`/artist/${artist.id}`}
         className="group relative bg-surface-2/50 hover:bg-surface-2 rounded-md p-4 transition-all duration-300 block transform hover:-translate-y-1"
         onMouseEnter={() => setIsHovered(true)}
@@ -236,8 +238,8 @@ function ArtistCard({ artist, index }: { artist: SpotifyArtist; index: number })
               isHovered && "scale-105"
             )}
           />
-          <button 
-            onClick={(e) => e.preventDefault()} 
+          <button
+            onClick={(e) => e.preventDefault()}
             className={cn(
               "absolute bottom-0 right-0 w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-xl transition-all duration-300",
               "hover:scale-110 active:scale-95",
@@ -279,9 +281,44 @@ export default function TopCharts() {
   const { playbackState } = usePlayerStore();
   const currentTrack = playbackState?.item;
   const isPlaying = playbackState?.is_playing ?? false;
-  
+
   const backendConfigured = isBackendConfigured();
-  const selectedCountry = COUNTRIES.find(c => c.code === country);
+
+  // Fetch Available Markets
+  const { data: availableMarkets } = useQuery({
+    queryKey: ['markets'],
+    queryFn: browseApi.getMarkets,
+    enabled: backendConfigured,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+
+  // Get User Profile for Default Country
+  useQuery({
+    queryKey: ['userProfile', 'auto-country'],
+    queryFn: async () => {
+      const user = await userApi.getProfile();
+      // Only auto-set if still on global default
+      if (user?.country && country === 'global') {
+        const userCountry = user.country;
+        setCountry(userCountry);
+      }
+      return user;
+    },
+    enabled: backendConfigured && country === 'global',
+    staleTime: Infinity,
+  });
+
+  // Construct Country List
+  const countryList = [
+    { code: 'global', name: 'Global', flag: '🌍' },
+    ...(availableMarkets || []).map(code => ({
+      code,
+      name: getCountryName(code),
+      flag: getFlagEmoji(code)
+    })).sort((a, b) => a.name.localeCompare(b.name))
+  ];
+
+  const selectedCountry = countryList.find(c => c.code === country) || countryList[0];
 
   // Fetch top tracks (user's top tracks as proxy for charts)
   const { data: topTracks, isLoading: tracksLoading } = useQuery({
@@ -307,8 +344,16 @@ export default function TopCharts() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const handlePlay = (track: SpotifyTrack) => {
-    console.log('Play track:', track.name);
+  const handlePlay = async (track: SpotifyTrack) => {
+    try {
+      if (currentTrack?.id === track.id && isPlaying) {
+        await playerApi.pause();
+      } else {
+        await playerApi.play({ uris: [track.uri] });
+      }
+    } catch (error) {
+      console.error('Play error:', error);
+    }
   };
 
   if (!backendConfigured) {
@@ -316,148 +361,148 @@ export default function TopCharts() {
   }
 
   return (
-    
-      <div className="p-6">
-        {/* Page Header */}
-        <AnimatedContainer animation="slide-up">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
-              <TrendingUp className="h-8 w-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-black">Top Charts</h1>
-              <p className="text-muted-foreground">What's trending right now</p>
-            </div>
+
+    <div className="p-6">
+      {/* Page Header */}
+      <AnimatedContainer animation="slide-up">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
+            <TrendingUp className="h-8 w-8 text-white" />
           </div>
+          <div>
+            <h1 className="text-4xl font-black">Top Charts</h1>
+            <p className="text-muted-foreground">What's trending right now</p>
+          </div>
+        </div>
+      </AnimatedContainer>
+
+      {/* Country Selector */}
+      <AnimatedContainer delay={50} animation="fade-in">
+        <div className="flex items-center gap-4 mb-6">
+          <Globe2 className="h-5 w-5 text-muted-foreground" />
+          <Select value={country} onValueChange={setCountry}>
+            <SelectTrigger className="w-[200px] bg-surface-2">
+              <SelectValue>
+                {selectedCountry && (
+                  <span className="flex items-center gap-2">
+                    <span>{selectedCountry.flag}</span>
+                    <span>{selectedCountry.name}</span>
+                  </span>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              {countryList.map((c) => (
+                <SelectItem key={c.code} value={c.code}>
+                  <span className="flex items-center gap-2">
+                    <span className="text-lg">{c.flag}</span>
+                    <span>{c.name}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </AnimatedContainer>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <AnimatedContainer delay={100} animation="fade-in">
+          <TabsList className="mb-6 bg-surface-2/50">
+            <TabsTrigger value="tracks" className="gap-2">
+              <Music2 className="h-4 w-4" />
+              Top Tracks
+            </TabsTrigger>
+            <TabsTrigger value="albums" className="gap-2">
+              <Disc3 className="h-4 w-4" />
+              Top Albums
+            </TabsTrigger>
+            <TabsTrigger value="artists" className="gap-2">
+              <Users className="h-4 w-4" />
+              Top Artists
+            </TabsTrigger>
+          </TabsList>
         </AnimatedContainer>
 
-        {/* Country Selector */}
-        <AnimatedContainer delay={50} animation="fade-in">
-          <div className="flex items-center gap-4 mb-6">
-            <Globe2 className="h-5 w-5 text-muted-foreground" />
-            <Select value={country} onValueChange={setCountry}>
-              <SelectTrigger className="w-[200px] bg-surface-2">
-                <SelectValue>
-                  {selectedCountry && (
-                    <span className="flex items-center gap-2">
-                      <span>{selectedCountry.flag}</span>
-                      <span>{selectedCountry.name}</span>
-                    </span>
-                  )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {COUNTRIES.map((c) => (
-                  <SelectItem key={c.code} value={c.code}>
-                    <span className="flex items-center gap-2">
-                      <span>{c.flag}</span>
-                      <span>{c.name}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </AnimatedContainer>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <AnimatedContainer delay={100} animation="fade-in">
-            <TabsList className="mb-6 bg-surface-2/50">
-              <TabsTrigger value="tracks" className="gap-2">
-                <Music2 className="h-4 w-4" />
-                Top Tracks
-              </TabsTrigger>
-              <TabsTrigger value="albums" className="gap-2">
-                <Disc3 className="h-4 w-4" />
-                Top Albums
-              </TabsTrigger>
-              <TabsTrigger value="artists" className="gap-2">
-                <Users className="h-4 w-4" />
-                Top Artists
-              </TabsTrigger>
-            </TabsList>
+        {/* Tracks Tab */}
+        <TabsContent value="tracks">
+          <AnimatedContainer delay={150} animation="fade-in">
+            <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-4 py-2 text-sm text-muted-foreground border-b border-border/50 mb-2">
+              <span className="w-10 text-center">#</span>
+              <span>Title</span>
+              <span>Album</span>
+              <span className="text-right pr-12">Duration</span>
+            </div>
           </AnimatedContainer>
 
-          {/* Tracks Tab */}
-          <TabsContent value="tracks">
-            <AnimatedContainer delay={150} animation="fade-in">
-              <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-4 py-2 text-sm text-muted-foreground border-b border-border/50 mb-2">
-                <span className="w-10 text-center">#</span>
-                <span>Title</span>
-                <span>Album</span>
-                <span className="text-right pr-12">Duration</span>
-              </div>
-            </AnimatedContainer>
-            
-            {tracksLoading ? (
-              <div className="space-y-2">
-                {[...Array(10)].map((_, i) => <SkeletonTrackRow key={i} />)}
-              </div>
-            ) : topTracks && topTracks.length > 0 ? (
-              <div className="space-y-1">
-                {topTracks.map((track, index) => (
-                  <TrackRow
-                    key={track.id}
-                    track={track}
-                    index={index}
-                    isPlaying={currentTrack?.id === track.id && isPlaying}
-                    onPlay={() => handlePlay(track)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Music2 className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                <h3 className="text-xl font-bold mb-2">No tracks found</h3>
-                <p className="text-muted-foreground">Charts data is not available yet</p>
-              </div>
-            )}
-          </TabsContent>
+          {tracksLoading ? (
+            <div className="space-y-2">
+              {[...Array(10)].map((_, i) => <SkeletonTrackRow key={i} />)}
+            </div>
+          ) : topTracks && topTracks.length > 0 ? (
+            <div className="space-y-1">
+              {topTracks.map((track, index) => (
+                <TrackRow
+                  key={track.id}
+                  track={track}
+                  index={index}
+                  isPlaying={currentTrack?.id === track.id && isPlaying}
+                  onPlay={() => handlePlay(track)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Music2 className="h-16 w-16 text-muted-foreground/50 mb-4" />
+              <h3 className="text-xl font-bold mb-2">No tracks found</h3>
+              <p className="text-muted-foreground">Charts data is not available yet</p>
+            </div>
+          )}
+        </TabsContent>
 
-          {/* Albums Tab */}
-          <TabsContent value="albums">
-            {albumsLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {[...Array(10)].map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            ) : topAlbums && topAlbums.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {topAlbums.map((album, index) => (
-                  <AlbumCard key={album.id} album={album} index={index} />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Disc3 className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                <h3 className="text-xl font-bold mb-2">No albums found</h3>
-                <p className="text-muted-foreground">Charts data is not available yet</p>
-              </div>
-            )}
-          </TabsContent>
+        {/* Albums Tab */}
+        <TabsContent value="albums">
+          {albumsLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {[...Array(10)].map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : topAlbums && topAlbums.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {topAlbums.map((album, index) => (
+                <AlbumCard key={album.id} album={album} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Disc3 className="h-16 w-16 text-muted-foreground/50 mb-4" />
+              <h3 className="text-xl font-bold mb-2">No albums found</h3>
+              <p className="text-muted-foreground">Charts data is not available yet</p>
+            </div>
+          )}
+        </TabsContent>
 
-          {/* Artists Tab */}
-          <TabsContent value="artists">
-            {artistsLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {[...Array(10)].map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            ) : topArtists && topArtists.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {topArtists.map((artist, index) => (
-                  <ArtistCard key={artist.id} artist={artist} index={index} />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Users className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                <h3 className="text-xl font-bold mb-2">No artists found</h3>
-                <p className="text-muted-foreground">Charts data is not available yet</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-    
+        {/* Artists Tab */}
+        <TabsContent value="artists">
+          {artistsLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {[...Array(10)].map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : topArtists && topArtists.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {topArtists.map((artist, index) => (
+                <ArtistCard key={artist.id} artist={artist} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Users className="h-16 w-16 text-muted-foreground/50 mb-4" />
+              <h3 className="text-xl font-bold mb-2">No artists found</h3>
+              <p className="text-muted-foreground">Charts data is not available yet</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+
   );
 }

@@ -9,10 +9,12 @@ namespace SpotifyBackend.Controllers;
 public class PlayerController : ControllerBase
 {
     private readonly SpotifyService _spotifyService;
+    private readonly ILogger<PlayerController> _logger;
 
-    public PlayerController(SpotifyService spotifyService)
+    public PlayerController(SpotifyService spotifyService, ILogger<PlayerController> logger)
     {
         _spotifyService = spotifyService;
+        _logger = logger;
     }
 
     [HttpGet("current")]
@@ -48,7 +50,7 @@ public class PlayerController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GetCurrentPlayback error: {ex.Message}");
+            _logger.LogError(ex, "GetCurrentPlayback error");
             return Ok(null);
         }
     }
@@ -67,7 +69,7 @@ public class PlayerController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"GetDevices error: {ex.Message}");
+            _logger.LogError(ex, "GetDevices error");
             return Ok(Array.Empty<object>());
         }
     }
@@ -179,7 +181,47 @@ public class PlayerController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Play error: {ex.Message}");
+            Console.WriteLine($"Play error (Attempt 1): {ex.Message}");
+            // Auto-Retry: If no active device, try to find one and transfer
+            try 
+            {
+                var devices = await client.Player.GetAvailableDevices();
+                var bestDevice = devices.Devices?.FirstOrDefault(d => !d.IsRestricted); // Pick first unrestricted device
+                
+                if (bestDevice != null)
+                {
+                    Console.WriteLine($"Retrying play on device: {bestDevice.Name} ({bestDevice.Id})");
+                    // Transfer to this device
+                    await client.Player.TransferPlayback(new PlayerTransferPlaybackRequest(new List<string> { bestDevice.Id }) { Play = false });
+                    // Small delay to allow propagation
+                    await Task.Delay(500);
+                    
+                    // Recreate Play Request with explicit device ID
+                    var retryRequest = new PlayerResumePlaybackRequest { DeviceId = bestDevice.Id };
+                    
+                    if (!string.IsNullOrEmpty(request?.ContextUri))
+                        retryRequest.ContextUri = request.ContextUri;
+                    if (request?.Uris != null && request.Uris.Count > 0)
+                        retryRequest.Uris = request.Uris;
+                    if (request?.Offset != null)
+                    {
+                        if (request.Offset.Position.HasValue)
+                            retryRequest.OffsetParam = new PlayerResumePlaybackRequest.Offset { Position = request.Offset.Position };
+                        else if (!string.IsNullOrEmpty(request.Offset.Uri))
+                            retryRequest.OffsetParam = new PlayerResumePlaybackRequest.Offset { Uri = request.Offset.Uri };
+                    }
+                    if (request?.PositionMs.HasValue == true)
+                        retryRequest.PositionMs = request.PositionMs.Value;
+
+                    await client.Player.ResumePlayback(retryRequest);
+                    return Ok();
+                }
+            }
+            catch (Exception retryEx)
+            {
+                Console.WriteLine($"Play retry failed: {retryEx.Message}");
+            }
+
             return BadRequest(new { error = "Playback failed. Ensure you have Spotify Premium and an active device." });
         }
     }
@@ -202,7 +244,32 @@ public class PlayerController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Play error: {ex.Message}");
+            Console.WriteLine($"Play error (Attempt 1): {ex.Message}");
+            // Auto-Retry: If no active device, try to find one and transfer
+            try 
+            {
+                var devices = await client.Player.GetAvailableDevices();
+                var bestDevice = devices.Devices?.FirstOrDefault(d => !d.IsRestricted);
+
+                if (bestDevice != null)
+                {
+                    Console.WriteLine($"Retrying play on device: {bestDevice.Name} ({bestDevice.Id})");
+                    await client.Player.TransferPlayback(new PlayerTransferPlaybackRequest(new List<string> { bestDevice.Id }) { Play = false });
+                    await Task.Delay(500);
+
+                    var retryRequest = new PlayerResumePlaybackRequest { DeviceId = bestDevice.Id };
+                    if (!string.IsNullOrEmpty(request?.Uri))
+                        retryRequest.Uris = new List<string> { request.Uri };
+
+                    await client.Player.ResumePlayback(retryRequest);
+                    return Ok();
+                }
+            }
+            catch (Exception retryEx)
+            {
+                Console.WriteLine($"Play retry failed: {retryEx.Message}");
+            }
+
             return BadRequest(new { error = "Playback failed. Ensure you have Spotify Premium and an active device." });
         }
     }

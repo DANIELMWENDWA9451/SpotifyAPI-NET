@@ -109,10 +109,6 @@ function LyricsDisplay({ trackId, track }: { trackId: string; track: SpotifyTrac
     };
   }, [playbackState?.is_playing]); // ONLY depend on playing state
 
-  // Smart Auto-Scroll State
-  const [isUserScrolling, setIsUserScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
-
   const lyricsData = data as LyricsData | null;
   const lines = lyricsData?.lyrics?.lines || [];
 
@@ -123,17 +119,6 @@ function LyricsDisplay({ trackId, track }: { trackId: string; track: SpotifyTrac
     const endTime = nextLine ? parseInt(nextLine.startTimeMs) : Infinity;
     return currentTime >= startTime && currentTime < endTime;
   });
-
-  // Handle Scroll Interaction
-  const handleScroll = () => {
-    if (!containerRef.current) return;
-
-    // Simple detection: if the user scrolls, we disable auto-scroll
-    // We rely on the "Resume" button to re-enable it.
-    if (!isUserScrolling) {
-      setIsUserScrolling(true);
-    }
-  };
 
   const scrollToActiveLine = (behavior: ScrollBehavior = 'smooth') => {
     if (activeLineRef.current && containerRef.current) {
@@ -153,22 +138,16 @@ function LyricsDisplay({ trackId, track }: { trackId: string; track: SpotifyTrac
     }
   };
 
-  const handleResumeSync = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsUserScrolling(false);
-    scrollToActiveLine('smooth');
-  };
-
-  // Auto-Scroll Effect
+  // Auto-Scroll Effect - ALWAYS enabled, no user scroll interruption
   useEffect(() => {
-    if (!isUserScrolling && activeLineIndex !== -1) {
+    if (activeLineIndex !== -1) {
       scrollToActiveLine('smooth');
     }
-  }, [activeLineIndex, isUserScrolling]);
+  }, [activeLineIndex]);
 
   // Initial load scroll
   useEffect(() => {
-    if (lines.length > 0 && !isUserScrolling) {
+    if (lines.length > 0) {
       scrollToActiveLine('instant');
     }
   }, [trackId, lines.length]);
@@ -225,60 +204,46 @@ function LyricsDisplay({ trackId, track }: { trackId: string; track: SpotifyTrac
     <div className="relative h-full flex flex-col">
       <div
         ref={containerRef}
-        onScroll={handleScroll} // Detect User Scroll
         className="flex-1 overflow-y-auto py-[50vh] px-6 scroll-smooth no-scrollbar"
         style={{
           maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
           WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
         }}
       >
-        {lines.map((line, index) => {
-          const isActive = index === activeLineIndex;
-          const isPast = index < activeLineIndex;
-          const distance = Math.abs(index - activeLineIndex);
+        <div className="flex flex-col items-center">
+          {lines.map((line, index) => {
+            const isActive = index === activeLineIndex;
+            const distance = Math.abs(index - activeLineIndex);
 
-          // blur calculation based on distance
-          const blurAmount = isActive ? 0 : Math.min(6, distance * 0.8);
-          const opacity = isActive ? 1 : Math.max(0.4, 1 - distance * 0.15);
-          const scale = isActive ? 1.05 : 0.98;
+            // blur calculation based on distance
+            const blurAmount = isActive ? 0 : Math.min(6, distance * 0.8);
+            const opacity = isActive ? 1 : Math.max(0.4, 1 - distance * 0.15);
+            const scale = isActive ? 1.05 : 0.98;
 
-          return (
-            <div
-              key={index}
-              ref={isActive ? activeLineRef : null}
-              onClick={() => {
-                playerApi.seek(parseInt(line.startTimeMs));
-                setIsUserScrolling(false); // Snap back to sync on click
-              }}
-              className={cn(
-                "relative transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] py-3 cursor-pointer origin-left",
-                isActive ? "text-white font-bold text-2xl md:text-3xl my-6 drop-shadow-2xl" : "text-neutral-400 font-medium text-lg md:text-xl hover:text-white"
-              )}
-              style={{
-                filter: `blur(${blurAmount}px)`,
-                opacity: opacity,
-                transform: `scale(${scale}) translateZ(0)`,
-                willChange: "transform, opacity, filter"
-              }}
-            >
-              {line.words}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Floating Resume Sync Button */}
-      <div className={cn(
-        "absolute bottom-8 right-6 transition-all duration-500 transform",
-        isUserScrolling ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"
-      )}>
-        <button
-          onClick={handleResumeSync}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-full shadow-xl hover:scale-105 transition-transform"
-        >
-          <ChevronDown className="h-4 w-4" />
-          Resume Sync
-        </button>
+            return (
+              <div
+                key={index}
+                ref={isActive ? activeLineRef : null}
+                onClick={() => playerApi.seek(parseInt(line.startTimeMs))}
+                className={cn(
+                  "relative transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] py-3 cursor-pointer text-center w-full",
+                  isActive
+                    ? "text-white font-bold text-2xl md:text-3xl my-6"
+                    : "text-neutral-400 font-medium text-lg md:text-xl hover:text-white"
+                )}
+                style={{
+                  filter: `blur(${blurAmount}px)`,
+                  opacity,
+                  transform: `scale(${scale}) translateZ(0)`,
+                  willChange: "transform, opacity, filter",
+                  textShadow: isActive ? "0 0 30px rgba(29, 185, 84, 0.5), 0 0 60px rgba(29, 185, 84, 0.3)" : "none"
+                }}
+              >
+                {line.words}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="text-center pb-2 pt-2 bg-gradient-to-t from-surface-1 to-transparent">
@@ -378,6 +343,8 @@ export function NowPlayingView({ isOpen, onClose, onQueueClick, initialTab = 'no
                 ? "bg-surface-3 text-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-2"
             )}
+            aria-selected={activeTab === 'now-playing'}
+            role="tab"
           >
             Now Playing
           </button>
@@ -389,6 +356,8 @@ export function NowPlayingView({ isOpen, onClose, onQueueClick, initialTab = 'no
                 ? "bg-surface-3 text-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-2"
             )}
+            aria-selected={activeTab === 'lyrics'}
+            role="tab"
           >
             Lyrics
           </button>
@@ -405,6 +374,7 @@ export function NowPlayingView({ isOpen, onClose, onQueueClick, initialTab = 'no
                   : "hover:bg-surface-2 text-muted-foreground"
               )}
               title={isPinned ? "Unpin panel" : "Pin panel"}
+              aria-label={isPinned ? "Unpin panel" : "Pin panel"}
             >
               <Pin className={cn("h-4 w-4", isPinned && "fill-current")} />
             </button>
@@ -417,6 +387,7 @@ export function NowPlayingView({ isOpen, onClose, onQueueClick, initialTab = 'no
               isPinned && "opacity-50 cursor-not-allowed"
             )}
             title={isPinned ? "Unpin to close" : "Close"}
+            aria-label="Close now playing view"
           >
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
@@ -463,6 +434,7 @@ export function NowPlayingView({ isOpen, onClose, onQueueClick, initialTab = 'no
                     "p-2 transition-all duration-200 hover:scale-110",
                     isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground"
                   )}
+                  aria-label={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
                 >
                   <Heart className={cn("h-6 w-6", isLiked && "fill-current animate-heart-beat")} />
                 </button>

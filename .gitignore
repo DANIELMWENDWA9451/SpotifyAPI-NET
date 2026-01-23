@@ -18,3 +18,6 @@ appsettings.Development.json
 node_modules/
 dist/
 .vercel
+
+# Security
+DataProtection-Keys/

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { SpotifyPlayerProvider } from "@/contexts/SpotifyPlayerContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Search from "./pages/Search";
 import Library from "./pages/Library";
@@ -45,31 +46,33 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route element={<MainLayout><Outlet /></MainLayout>}>
-              <Route path="/" element={<Index />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/search/:query" element={<Search />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/library/:section" element={<Library />} />
-              <Route path="/playlist/:id" element={<Playlist />} />
-              <Route path="/album/:id" element={<Album />} />
-              <Route path="/artist/:id" element={<Artist />} />
-              <Route path="/genre/:id" element={<Genre />} />
-              <Route path="/show/:id" element={<Show />} />
-              <Route path="/episode/:id" element={<Episode />} />
-              <Route path="/queue" element={<Queue />} />
-              <Route path="/collection/tracks" element={<LikedSongs />} />
-              <Route path="/recommendations" element={<Recommendations />} />
-              <Route path="/browse" element={<Browse />} />
-              <Route path="/browse/new-releases" element={<NewReleases />} />
-              <Route path="/browse/charts" element={<TopCharts />} />
-              <Route path="/recently-played" element={<RecentlyPlayed />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route element={<MainLayout><Outlet /></MainLayout>}>
+                <Route path="/" element={<Index />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/search/:query" element={<Search />} />
+                <Route path="/library" element={<Library />} />
+                <Route path="/library/:section" element={<Library />} />
+                <Route path="/playlist/:id" element={<Playlist />} />
+                <Route path="/album/:id" element={<Album />} />
+                <Route path="/artist/:id" element={<Artist />} />
+                <Route path="/genre/:id" element={<Genre />} />
+                <Route path="/show/:id" element={<Show />} />
+                <Route path="/episode/:id" element={<Episode />} />
+                <Route path="/queue" element={<Queue />} />
+                <Route path="/collection/tracks" element={<LikedSongs />} />
+                <Route path="/recommendations" element={<Recommendations />} />
+                <Route path="/browse" element={<Browse />} />
+                <Route path="/browse/new-releases" element={<NewReleases />} />
+                <Route path="/browse/charts" element={<TopCharts />} />
+                <Route path="/recently-played" element={<RecentlyPlayed />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </ErrorBoundary>
         </BrowserRouter>
       </SpotifyPlayerProvider>
     </TooltipProvider>

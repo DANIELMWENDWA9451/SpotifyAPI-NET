@@ -65,6 +65,8 @@
     --player-foreground: 0 0% 100%;
     --player-progress: 0 0% 40%;
     --player-progress-active: 141 73% 42%;
+    --z-player: 50;
+    --z-overlap: 40;
 
     /* Surface levels */
     --surface-0: 0 0% 0%;

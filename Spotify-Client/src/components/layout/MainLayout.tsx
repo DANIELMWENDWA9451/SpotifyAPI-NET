@@ -66,7 +66,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
         {/* Main Content */}
         <main className={cn(
-          "flex-1 min-w-0 overflow-hidden transition-all duration-300",
+          "flex-1 min-w-0 overflow-hidden transition-all duration-300 pb-[120px]",
           isPanelOpen && "md:mr-[380px]"
         )}>
           <div className="h-full overflow-y-auto bg-gradient-to-b from-surface-2 to-background rounded-lg m-2">

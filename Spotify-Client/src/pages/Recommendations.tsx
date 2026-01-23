@@ -268,9 +268,10 @@ export default function Recommendations() {
       limit: 30,
     }),
     enabled: backendConfigured && totalSeeds.length > 0,
-    staleTime: 1000 * 30, // 30 seconds - allow fresher results on seed changes
     refetchOnMount: true,
   });
+
+  const isError = !backendConfigured || (!isLoading && !recommendations && !topTracks);
 
   const toggleArtistSeed = (artistId: string) => {
     setSelectedArtistIds(prev =>
@@ -290,125 +291,142 @@ export default function Recommendations() {
   const recommendedTracks = recommendations?.tracks ?? [];
 
   return (
-    
-      <div className="min-h-full">
-        {/* Hero Header */}
-        <AnimatedContainer animation="fade-in">
-          <div className="p-6 pb-0 bg-gradient-to-b from-primary/20 to-transparent">
-            <div className="flex items-center gap-3 mb-2">
-              <Sparkles className="h-8 w-8 text-primary" />
-              <h1 className="text-4xl font-black">Made For You</h1>
+
+    <div className="min-h-full">
+      {/* Hero Header */}
+      <AnimatedContainer animation="fade-in">
+        <div className="p-6 pb-0 bg-gradient-to-b from-primary/20 to-transparent">
+          <div className="flex items-center gap-3 mb-2">
+            <Sparkles className="h-8 w-8 text-primary" />
+            <h1 className="text-4xl font-black">Made For You</h1>
+          </div>
+          <p className="text-muted-foreground mb-6">
+            Personalized recommendations based on your listening history
+          </p>
+        </div>
+      </AnimatedContainer>
+
+      {/* Artist Seeds */}
+      {availableArtists.length > 0 && (
+        <AnimatedContainer delay={100} animation="fade-in">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                Based on your favorite artists
+              </h2>
+              <button
+                onClick={() => refetch()}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </button>
             </div>
-            <p className="text-muted-foreground mb-6">
-              Personalized recommendations based on your listening history
-            </p>
+            <div className="flex flex-wrap gap-2">
+              {availableArtists.slice(0, 8).map((artist) => (
+                <ArtistSeed
+                  key={artist.id}
+                  artist={artist}
+                  isSelected={selectedArtistIds.includes(artist.id)}
+                  onToggle={() => toggleArtistSeed(artist.id)}
+                />
+              ))}
+            </div>
           </div>
         </AnimatedContainer>
+      )}
 
-        {/* Artist Seeds */}
-        {availableArtists.length > 0 && (
-          <AnimatedContainer delay={100} animation="fade-in">
-            <div className="px-6 py-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                  Based on your favorite artists
-                </h2>
-                <button
-                  onClick={() => refetch()}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {availableArtists.slice(0, 8).map((artist) => (
-                  <ArtistSeed
-                    key={artist.id}
-                    artist={artist}
-                    isSelected={selectedArtistIds.includes(artist.id)}
-                    onToggle={() => toggleArtistSeed(artist.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          </AnimatedContainer>
-        )}
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="p-6">
-            <div className="h-8 w-48 bg-surface-3 rounded mb-4 animate-pulse" />
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
-              {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-            {[...Array(10)].map((_, i) => <SkeletonTrackRow key={i} />)}
+      {/* Loading State */}
+      {isLoading && (
+        <div className="p-6">
+          <div className="h-8 w-48 bg-surface-3 rounded mb-4 animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
+            {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
           </div>
-        )}
+          {[...Array(10)].map((_, i) => <SkeletonTrackRow key={i} />)}
+        </div>
+      )}
 
-        {/* Recommendations */}
-        {!isLoading && recommendedTracks.length > 0 && (
-          <div className="p-6">
-            {/* Featured Tracks Grid */}
-            <AnimatedContainer delay={150} animation="fade-in">
-              <h2 className="text-2xl font-bold mb-4">Recommended for you</h2>
-            </AnimatedContainer>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
-              {recommendedTracks.slice(0, 6).map((track, index) => (
-                <TrackCard
-                  key={track.id}
-                  track={track}
-                  index={index}
-                  isPlaying={currentTrackId === track.id && isPlaying}
-                  onPlay={() => {
-                    setCurrentTrackId(track.id);
-                    setIsPlaying(true);
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Full Track List */}
-            <AnimatedContainer delay={200} animation="fade-in">
-              <h2 className="text-2xl font-bold mb-4">All recommendations</h2>
-            </AnimatedContainer>
-            <div className="bg-surface-1/30 rounded-lg overflow-hidden">
-              {/* Header */}
-              <AnimatedContainer delay={220} animation="fade-in">
-                <div className="grid grid-cols-[16px_4fr_2fr_minmax(80px,1fr)] gap-4 px-4 py-2 border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
-                  <span>#</span>
-                  <span>Title</span>
-                  <span>Album</span>
-                  <span className="text-right"><Clock className="h-4 w-4 inline" /></span>
-                </div>
-              </AnimatedContainer>
-              {recommendedTracks.map((track, index) => (
-                <TrackRow
-                  key={track.id}
-                  track={track}
-                  index={index}
-                  isPlaying={currentTrackId === track.id && isPlaying}
-                  onPlay={() => {
-                    setCurrentTrackId(track.id);
-                    setIsPlaying(true);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && recommendedTracks.length === 0 && (
-          <AnimatedContainer animation="fade-in">
-            <div className="text-center py-20">
-              <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h2 className="text-xl font-bold mb-2">No recommendations yet</h2>
-              <p className="text-muted-foreground">Listen to more music to get personalized recommendations</p>
-            </div>
+      {/* Recommendations */}
+      {!isLoading && recommendedTracks.length > 0 && (
+        <div className="p-6">
+          {/* Featured Tracks Grid */}
+          <AnimatedContainer delay={150} animation="fade-in">
+            <h2 className="text-2xl font-bold mb-4">Recommended for you</h2>
           </AnimatedContainer>
-        )}
-      </div>
-    
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
+            {recommendedTracks.slice(0, 6).map((track, index) => (
+              <TrackCard
+                key={track.id}
+                track={track}
+                index={index}
+                isPlaying={currentTrackId === track.id && isPlaying}
+                onPlay={() => {
+                  setCurrentTrackId(track.id);
+                  setIsPlaying(true);
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Full Track List */}
+          <AnimatedContainer delay={200} animation="fade-in">
+            <h2 className="text-2xl font-bold mb-4">All recommendations</h2>
+          </AnimatedContainer>
+          <div className="bg-surface-1/30 rounded-lg overflow-hidden">
+            {/* Header */}
+            <AnimatedContainer delay={220} animation="fade-in">
+              <div className="grid grid-cols-[16px_4fr_2fr_minmax(80px,1fr)] gap-4 px-4 py-2 border-b border-border text-xs text-muted-foreground uppercase tracking-wider">
+                <span>#</span>
+                <span>Title</span>
+                <span>Album</span>
+                <span className="text-right"><Clock className="h-4 w-4 inline" /></span>
+              </div>
+            </AnimatedContainer>
+            {recommendedTracks.map((track, index) => (
+              <TrackRow
+                key={track.id}
+                track={track}
+                index={index}
+                isPlaying={currentTrackId === track.id && isPlaying}
+                onPlay={() => {
+                  setCurrentTrackId(track.id);
+                  setIsPlaying(true);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {isError && !isLoading && (
+        <AnimatedContainer animation="fade-in">
+          <div className="text-center py-20">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
+            <p className="text-muted-foreground mb-4">We couldn't generate recommendations for you.</p>
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-primary text-black rounded-full font-bold hover:scale-105 transition-transform"
+            >
+              Try Again
+            </button>
+          </div>
+        </AnimatedContainer>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && !isError && recommendedTracks.length === 0 && (
+        <AnimatedContainer animation="fade-in">
+          <div className="text-center py-20">
+            <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">No recommendations yet</h2>
+            <p className="text-muted-foreground">Listen to more music to get personalized recommendations</p>
+          </div>
+        </AnimatedContainer>
+      )}
+    </div>
+
   );
 }

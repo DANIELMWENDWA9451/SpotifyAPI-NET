@@ -5,7 +5,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-// Removed IMemoryCache usage to prevent build errors
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using SpotifyAPI.Web;
 
 namespace SpotifyBackend.Services
@@ -19,15 +20,28 @@ namespace SpotifyBackend.Services
     {
         private readonly HttpClient _httpClient;
         private readonly SpotifyService _spotifyService;
+        private readonly ILogger<LyricsService> _logger;
+        private readonly IMemoryCache _cache;
+        private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(1);
 
-        public LyricsService(HttpClient httpClient, SpotifyService spotifyService)
+        public LyricsService(HttpClient httpClient, SpotifyService spotifyService, ILogger<LyricsService> logger, IMemoryCache cache)
         {
             _httpClient = httpClient;
             _spotifyService = spotifyService;
+            _logger = logger;
+            _cache = cache;
         }
 
         public async Task<object> GetLyricsAsync(string trackId)
         {
+            // Check cache first
+            var cacheKey = $"lyrics:{trackId}";
+            if (_cache.TryGetValue(cacheKey, out object cachedLyrics))
+            {
+                _logger.LogDebug("Returning cached lyrics for track {TrackId}", trackId);
+                return cachedLyrics;
+            }
+
             try
             {
                 // 1. Get Track Metadata from Official Spotify API
@@ -60,15 +74,20 @@ namespace SpotifyBackend.Services
                     var lrcData = JsonSerializer.Deserialize<LrcLibResponse>(jsonContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     
                     var formattedLyrics = ConvertToFrontendFormat(lrcData);
+                    var result = new { lyrics = formattedLyrics };
                     
-                    return new { lyrics = formattedLyrics };
+                    // Cache the result for 1 hour
+                    _cache.Set(cacheKey, result, CacheDuration);
+                    _logger.LogDebug("Cached lyrics for track {TrackId}", trackId);
+                    
+                    return result;
                 }
                 
                 return new { error = "Lyrics not found in public database" };
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error fetching lyrics: {ex.Message}");
+                _logger.LogError(ex, "Error fetching lyrics for track {TrackId}", trackId);
                 return new { error = "Failed to fetch lyrics" };
             }
         }

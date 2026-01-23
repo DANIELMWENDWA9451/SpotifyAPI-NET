@@ -164,7 +164,7 @@ export default {
       },
       spacing: {
         "sidebar": "280px",
-        "player": "90px",
+        "player": "112px",
       },
     },
   },

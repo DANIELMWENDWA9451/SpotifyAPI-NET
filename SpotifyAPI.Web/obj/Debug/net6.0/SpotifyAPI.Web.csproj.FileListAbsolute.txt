@@ -12,3 +12,4 @@ C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net6.0\refint\S
 C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net6.0\SpotifyAPI.Web.xml
 C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net6.0\SpotifyAPI.Web.pdb
 C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net6.0\ref\SpotifyAPI.Web.dll
+C:\Users\Coxward\Desktop\SpotifyAPI-NET\SpotifyAPI.Web\obj\Debug\net6.0\SpotifyAPI.Web.sourcelink.json
